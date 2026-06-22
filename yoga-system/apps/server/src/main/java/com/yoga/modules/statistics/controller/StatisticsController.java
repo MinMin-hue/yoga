@@ -1,12 +1,10 @@
 package com.yoga.modules.statistics.controller;
 
 import com.yoga.common.R;
+import com.yoga.modules.statistics.dto.StatisticsDTO;
 import com.yoga.modules.statistics.service.StatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/statistics")
@@ -15,23 +13,20 @@ public class StatisticsController {
 
     private final StatisticsService service;
 
-    @GetMapping("/revenue")
-    public R<Map<String, Object>> revenue(@RequestParam(defaultValue = "month") String range) {
-        return service.revenue(range);
+    /**
+     * 首页看板概览
+     */
+    @GetMapping("/overview")
+    public R<StatisticsDTO> overview() {
+        return service.overview();
     }
 
-    @GetMapping("/course")
-    public R<List<Map<String, Object>>> course(@RequestParam(defaultValue = "month") String range) {
-        return service.course(range);
-    }
-
-    @GetMapping("/member")
-    public R<Map<String, Object>> member(@RequestParam(defaultValue = "month") String range) {
-        return service.member(range);
-    }
-
-    @GetMapping("/coach")
-    public R<List<Map<String, Object>>> coach(@RequestParam(defaultValue = "month") String range) {
-        return service.coach(range);
+    /**
+     * 多维度区间统计
+     * @param days 近 N 天 (默认 7)
+     */
+    @GetMapping("/range")
+    public R<StatisticsDTO> range(@RequestParam(defaultValue = "7") int days) {
+        return service.range(days);
     }
 }

@@ -1,10 +1,9 @@
 package com.yoga.modules.statistics.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.yoga.common.utils.PageUtils;
-import com.yoga.common.utils.Query;
-import com.yoga.modules.admin.entity.AdminUser;
-import com.yoga.modules.admin.mapper.AdminUserMapper;
+import com.yoga.common.R;
+import com.yoga.modules.auth.entity.AdminUser;
+import com.yoga.modules.auth.mapper.AdminUserMapper;
 import com.yoga.modules.booking.entity.Booking;
 import com.yoga.modules.booking.mapper.BookingMapper;
 import com.yoga.modules.course.entity.CourseSchedule;
@@ -36,7 +35,10 @@ public class StatisticsService {
     @Autowired private MemberMapper memberMapper;
     @Autowired private AdminUserMapper adminUserMapper;
 
-    public StatisticsDTO overview() {
+    /**
+     * 首页看板概览
+     */
+    public R<StatisticsDTO> overview() {
         StatisticsDTO dto = new StatisticsDTO();
         LocalDate today = LocalDate.now();
         LocalDateTime startOfDay = today.atStartOfDay();
@@ -48,7 +50,7 @@ public class StatisticsService {
         BigDecimal todayRevenue = orderInfoMapper.selectList(
             new QueryWrapper<OrderInfo>()
                 .eq("status", "PAID")
-                .between("paid_at", startOfDay, endOfDay)
+                .between("pay_time", startOfDay, endOfDay)
         ).stream().map(OrderInfo::getAmount).filter(Objects::nonNull)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         dto.setTodayRevenue(todayRevenue);
@@ -57,7 +59,7 @@ public class StatisticsService {
         BigDecimal monthRevenue = orderInfoMapper.selectList(
             new QueryWrapper<OrderInfo>()
                 .eq("status", "PAID")
-                .ge("paid_at", startOfMonth)
+                .ge("pay_time", startOfMonth)
         ).stream().map(OrderInfo::getAmount).filter(Objects::nonNull)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         dto.setMonthRevenue(monthRevenue);
@@ -71,8 +73,8 @@ public class StatisticsService {
         // 今日已签到
         Long todayCheckIns = bookingMapper.selectCount(
             new QueryWrapper<Booking>()
-                .between("check_in_at", startOfDay, endOfDay)
-                .isNotNull("check_in_at")
+                .between("checked_in_at", startOfDay, endOfDay)
+                .isNotNull("checked_in_at")
         );
         dto.setTodayCheckIns(todayCheckIns);
 
@@ -92,73 +94,69 @@ public class StatisticsService {
         Long checkedIn7 = bookingMapper.selectCount(
             new QueryWrapper<Booking>()
                 .ge("booked_at", sevenDaysAgo)
-                .isNotNull("check_in_at")
+                .isNotNull("checked_in_at")
         );
         double rate = totalIn7 == 0 ? 0 : Math.round(checkedIn7 * 10000.0 / totalIn7) / 100.0;
         dto.setAttendanceRate(rate);
 
-        // Top 5 课程上座率
+        // Top 5 课程上座率 / 教练课时
         dto.setTopCourses(topCourses(5));
-        // Top 5 教练课时
         dto.setTopCoaches(topCoaches(5));
-        return dto;
+        return R.ok(dto);
     }
 
-    public StatisticsDTO range(int days) {
+    /**
+     * 区间统计
+     */
+    public R<StatisticsDTO> range(int days) {
         StatisticsDTO dto = new StatisticsDTO();
         LocalDateTime from = LocalDate.now().minusDays(days).atStartOfDay();
-        // 营收
+
         BigDecimal revenue = orderInfoMapper.selectList(
-            new QueryWrapper<OrderInfo>().eq("status", "PAID").ge("paid_at", from)
+            new QueryWrapper<OrderInfo>().eq("status", "PAID").ge("pay_time", from)
         ).stream().map(OrderInfo::getAmount).filter(Objects::nonNull)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         dto.setRevenue(revenue);
-        // 预约 / 签到
+
         Long bookings = bookingMapper.selectCount(
             new QueryWrapper<Booking>().ge("booked_at", from)
         );
         Long checkedIn = bookingMapper.selectCount(
-            new QueryWrapper<Booking>().ge("booked_at", from).isNotNull("check_in_at")
+            new QueryWrapper<Booking>().ge("booked_at", from).isNotNull("checked_in_at")
         );
         dto.setBookings(bookings);
         dto.setCheckInRate(bookings == 0 ? 0 : Math.round(checkedIn * 10000.0 / bookings) / 100.0);
-        // 新增会员
+
         Long newMembers = memberMapper.selectCount(
             new QueryWrapper<Member>().ge("created_at", from)
         );
         Long active = memberMapper.selectCount(new QueryWrapper<Member>().eq("status", 1));
         dto.setNewMembers(newMembers);
         dto.setActiveMembers(active);
-        // 出勤率
-        Long totalInRange = bookings;
-        Long checkIn = checkedIn;
-        double attendance = totalInRange == 0 ? 0 : Math.round(checkIn * 10000.0 / totalInRange) / 100.0;
+
+        double attendance = bookings == 0 ? 0 : Math.round(checkedIn * 10000.0 / bookings) / 100.0;
         dto.setAttendanceRate(attendance);
-        // 课程数
+
         Long totalCourses = courseScheduleMapper.selectCount(
             new QueryWrapper<CourseSchedule>().ge("start_time", from)
         );
         dto.setTotalCourses(totalCourses);
-        // 排名
+
         dto.setTopCourses(topCourses(10));
         dto.setTopCoaches(topCoaches(10));
-        // 订单类型分布
         dto.setOrderTypeDist(orderTypeDist(from));
-        return dto;
+        return R.ok(dto);
     }
 
     private List<StatisticsDTO.CourseRank> topCourses(int n) {
-        // 按课程类型聚合
         List<Booking> bookings = bookingMapper.selectList(null);
         Map<Long, int[]> map = new HashMap<>(); // [booked, capacity]
         for (Booking b : bookings) {
             CourseSchedule s = courseScheduleMapper.selectById(b.getScheduleId());
             if (s == null) continue;
             map.computeIfAbsent(s.getCourseTypeId(), k -> new int[2]);
-            int[] arr = map.get(s.getCourseTypeId());
-            arr[0]++;
+            map.get(s.getCourseTypeId())[0]++;
         }
-        // 容量
         for (Map.Entry<Long, int[]> e : map.entrySet()) {
             List<CourseSchedule> list = courseScheduleMapper.selectList(
                 new QueryWrapper<CourseSchedule>().eq("course_type_id", e.getKey())
@@ -203,7 +201,7 @@ public class StatisticsService {
 
     private List<Map<String, Object>> orderTypeDist(LocalDateTime from) {
         List<OrderInfo> list = orderInfoMapper.selectList(
-            new QueryWrapper<OrderInfo>().eq("status", "PAID").ge("paid_at", from)
+            new QueryWrapper<OrderInfo>().eq("status", "PAID").ge("pay_time", from)
         );
         Map<String, BigDecimal> sum = new HashMap<>();
         for (OrderInfo o : list) {
@@ -217,10 +215,5 @@ public class StatisticsService {
             res.add(m);
         });
         return res;
-    }
-
-    public PageUtils page(Map<String, Object> params) {
-        Query<CourseSchedule> q = new Query<>(params);
-        return new PageUtils(courseScheduleMapper.selectPage(q, null));
     }
 }
