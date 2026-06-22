@@ -2,106 +2,77 @@
   <div class="page">
     <!-- 欢迎横幅 -->
     <div class="page-hero">
-      <h2>👋 你好,{{ userName }}!</h2>
-      <p>今天是 {{ today }}, 祝你工作愉快, 期待今天的精彩课程 ✨</p>
+      <h2>👋 你好, {{ user.profile?.realName || '管理员' }}</h2>
+      <p>{{ todayText }} · 今天又是元气满满的一天</p>
       <div class="hero-actions">
-        <el-button round size="default" @click="$router.push('/schedule')">
-          <el-icon><Calendar /></el-icon>&nbsp;查看排课
-        </el-button>
-        <el-button round size="default" type="warning" @click="$router.push('/order')">
-          <el-icon><Money /></el-icon>&nbsp;处理订单
-        </el-button>
+        <el-button type="primary" :icon="Plus" @click="$router.push('/schedule')">安排课程</el-button>
+        <el-button :icon="User" @click="$router.push('/member')">查看会员</el-button>
       </div>
     </div>
 
-    <!-- 统计卡 -->
-    <el-row :gutter="16">
-      <el-col :span="6">
-        <div class="stat-card primary">
-          <div class="stat-icon">💰</div>
-          <div class="stat-num">¥ {{ formatNum(data.revenue?.total) }}</div>
-          <div class="stat-label">本月营业额</div>
-          <div class="stat-trend">订单数 {{ data.revenue?.orderCount || 0 }} 笔</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card warm">
-          <div class="stat-icon">👥</div>
-          <div class="stat-num">{{ data.member?.newCount || 0 }}</div>
-          <div class="stat-label">本月新增会员</div>
-          <div class="stat-trend">活跃 {{ data.member?.activeCount || 0 }} 人</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card cool">
-          <div class="stat-icon">📅</div>
-          <div class="stat-num">{{ data.course?.reduce((s: number, c: any) => s + c.scheduleCount, 0) || 0 }}</div>
-          <div class="stat-label">本月排课数</div>
-          <div class="stat-trend">已约 {{ data.course?.reduce((s: number, c: any) => s + c.bookedCount, 0) || 0 }} 人次</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card success">
-          <div class="stat-icon">🏆</div>
-          <div class="stat-num">{{ data.coach?.length || 0 }}</div>
-          <div class="stat-label">在职教练</div>
-          <div class="stat-trend">本月服务 {{ data.coach?.reduce((s: number, c: any) => s + c.studentCount, 0) || 0 }} 学员</div>
-        </div>
-      </el-col>
-    </el-row>
+    <!-- 4 个统计卡 -->
+    <div class="stat-grid">
+      <div class="stat-card primary">
+        <div class="stat-icon"><el-icon><Money /></el-icon></div>
+        <div class="stat-num">¥ {{ stats.todayRevenue ?? 0 }}</div>
+        <div class="stat-label">今日营收</div>
+        <div class="stat-trend">月累计 ¥ {{ stats.monthRevenue ?? 0 }}</div>
+      </div>
+      <div class="stat-card warm">
+        <div class="stat-icon"><el-icon><Calendar /></el-icon></div>
+        <div class="stat-num">{{ stats.todayBookings ?? 0 }}</div>
+        <div class="stat-label">今日预约</div>
+        <div class="stat-trend">已签到 {{ stats.todayCheckIns ?? 0 }}</div>
+      </div>
+      <div class="stat-card cool">
+        <div class="stat-icon"><el-icon><User /></el-icon></div>
+        <div class="stat-num">{{ stats.activeMembers ?? 0 }}</div>
+        <div class="stat-label">活跃会员</div>
+        <div class="stat-trend">总会员 {{ stats.totalMembers ?? 0 }}</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-icon"><el-icon><DataLine /></el-icon></div>
+        <div class="stat-num">{{ stats.attendanceRate ?? 0 }}%</div>
+        <div class="stat-label">平均出勤率</div>
+        <div class="stat-trend">近 7 天</div>
+      </div>
+    </div>
 
-    <!-- 详细数据 -->
-    <el-row :gutter="16" class="row-gap">
-      <el-col :span="12">
+    <!-- 课程上座率 / 教练课时榜 -->
+    <el-row :gutter="16" style="margin-top: 16px">
+      <el-col :xs="24" :md="14">
         <div class="y-card">
           <div class="y-card-header">
-            <span class="y-card-title">🔥 课程上座率 TOP</span>
-            <el-button text type="primary" @click="$router.push('/statistics')">查看更多</el-button>
+            <div class="y-card-title">📊 课程上座率 Top</div>
+            <el-button text type="primary" @click="$router.push('/statistics')">查看更多 →</el-button>
           </div>
-          <el-table :data="(data.course || []).slice(0, 5)" size="default">
-            <el-table-column prop="courseTypeName" label="课程" />
-            <el-table-column prop="scheduleCount" label="排课" width="80" align="center" />
-            <el-table-column prop="bookedCount" label="已约" width="80" align="center" />
-            <el-table-column label="上座率" width="180">
-              <template #default="{ row }">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div class="capacity-bar" :class="rateClass(row.rate)">
-                    <span :style="{ width: Math.min(row.rate, 100) + '%' }"></span>
-                  </div>
-                  <span class="capacity-text">{{ row.rate }}%</span>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div v-if="!data.course?.length" class="empty-state">
-            <div class="empty-icon">📊</div>暂无数据
+          <div v-for="(c, i) in topCourses" :key="c.courseTypeId" class="rank-row">
+            <div class="rank-no" :class="rankClass(i)">{{ i + 1 }}</div>
+            <div class="rank-info">
+              <div class="rank-name">{{ c.courseTypeName }}</div>
+              <div class="capacity-bar" style="width: 100%"><span :style="{ width: c.rate + '%' }"></span></div>
+            </div>
+            <div class="rank-rate">{{ c.rate }}%</div>
           </div>
+          <div v-if="!topCourses.length" class="empty-state"><div class="empty-icon">📊</div>暂无数据</div>
         </div>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :md="10">
         <div class="y-card">
           <div class="y-card-header">
-            <span class="y-card-title">⭐ 教练课时榜</span>
-            <el-button text type="primary" @click="$router.push('/coach')">教练列表</el-button>
+            <div class="y-card-title">🏆 教练课时榜</div>
           </div>
-          <el-table :data="(data.coach || []).slice(0, 5)" size="default">
-            <el-table-column label="教练" min-width="120">
-              <template #default="{ row }">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div class="y-coach-avatar">{{ row.coachName?.charAt(0) }}</div>
-                  <span>{{ row.coachName }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="scheduleCount" label="排课" width="80" align="center" />
-            <el-table-column prop="studentCount" label="学员" width="80" align="center" />
-            <el-table-column label="状态" width="100" align="center">
-              <template #default><span class="badge success"><span class="badge-dot"></span>在岗</span></template>
-            </el-table-column>
-          </el-table>
-          <div v-if="!data.coach?.length" class="empty-state">
-            <div class="empty-icon">🧘</div>暂无教练
+          <div v-for="(c, i) in topCoaches" :key="c.coachId" class="rank-row">
+            <div class="rank-no" :class="rankClass(i)">{{ i + 1 }}</div>
+            <div class="rank-info">
+              <div class="coach-mini">
+                <div class="mini-avatar">{{ (c.coachName || '?').charAt(0) }}</div>
+                <span class="rank-name">{{ c.coachName }}</span>
+              </div>
+            </div>
+            <div class="rank-rate">{{ c.hours }} 课时</div>
           </div>
+          <div v-if="!topCoaches.length" class="empty-state"><div class="empty-icon">🏆</div>暂无数据</div>
         </div>
       </el-col>
     </el-row>
@@ -109,45 +80,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { Plus, User, Money, Calendar, DataLine } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { statisticsApi } from '@/api'
 
 const user = useUserStore()
-const data = ref<any>({})
+const stats = reactive<any>({})
+const topCourses = ref<any[]>([])
+const topCoaches = ref<any[]>([])
 
-const userName = computed(() => user.profile?.realName || user.profile?.username || '管理员')
+const todayText = computed(() => {
+  const d = new Date()
+  const w = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${w}`
+})
+const rankClass = (i: number) => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''
 
-const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
-
-const formatNum = (n: number) => Number(n || 0).toLocaleString('zh-CN')
-
-const rateClass = (rate: number) => {
-  if (rate >= 90) return 'full'
-  if (rate >= 70) return 'warn'
-  return ''
-}
-
-const load = async () => {
-  const [rev, mem, course, coach] = await Promise.all([
-    statisticsApi.revenue('month'),
-    statisticsApi.member('month'),
-    statisticsApi.course('month'),
-    statisticsApi.coach('month')
-  ])
-  data.value = { revenue: rev.data, member: mem.data, course: course.data, coach: coach.data }
-}
-onMounted(load)
+onMounted(async () => {
+  try {
+    const r: any = await statisticsApi.overview()
+    Object.assign(stats, r.data)
+    topCourses.value = r.data.topCourses || []
+    topCoaches.value = r.data.topCoaches || []
+  } catch (e) { console.warn('dashboard load fail', e) }
+})
 </script>
 
 <style scoped>
-.row-gap { margin-top: 16px; }
-
-.y-coach-avatar {
+.stat-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--y-border); }
+.rank-row:last-child { border-bottom: none; }
+.rank-no {
   width: 28px; height: 28px; border-radius: 50%;
-  background: var(--y-gradient-primary);
-  color: #fff; display: flex; align-items: center; justify-content: center;
+  background: #e2e8f0; color: var(--y-text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; flex-shrink: 0;
+}
+.rank-no.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #fff; }
+.rank-no.silver { background: linear-gradient(135deg, #cbd5e1, #94a3b8); color: #fff; }
+.rank-no.bronze { background: linear-gradient(135deg, #fb923c, #c2410c); color: #fff; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 13px; color: var(--y-text); margin-bottom: 4px; }
+.rank-rate { font-size: 14px; font-weight: 600; color: var(--y-primary); }
+.coach-mini { display: flex; align-items: center; gap: 8px; }
+.mini-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--y-gradient-warm); color: #fff;
+  display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600;
-  box-shadow: 0 2px 6px rgba(102,126,234,.3);
 }
 </style>
