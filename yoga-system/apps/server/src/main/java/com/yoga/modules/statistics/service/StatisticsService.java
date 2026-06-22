@@ -1,6 +1,19 @@
 package com.yoga.modules.statistics.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yoga.common.R;
+import com.yoga.modules.auth.entity.AdminUser;
+import com.yoga.modules.auth.mapper.AdminUserMapper;
+import com.yoga.modules.booking.entity.Booking;
+import com.yoga.modules.booking.mapper.BookingMapper;
+import com.yoga.modules.course.entity.CourseSchedule;
+import com.yoga.modules.course.entity.CourseType;
+import com.yoga.modules.course.mapper.CourseScheduleMapper;
+import com.yoga.modules.course.mapper.CourseTypeMapper;
+import com.yoga.modules.member.entity.Member;
+import com.yoga.modules.member.mapper.MemberMapper;
+import com.yoga.modules.order.entity.OrderInfo;
+import com.yoga.modules.order.mapper.OrderInfoMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,20 +40,20 @@ public class StatisticsService {
      */
     public R<Map<String, Object>> revenue(String range) {
         LocalDateTime[] span = calcRange(range);
-        var paid = orderInfoMapper.selectList(new LambdaQueryWrapper<com.yoga.modules.order.entity.OrderInfo>()
-                .eq(com.yoga.modules.order.entity.OrderInfo::getStatus, "PAID")
-                .ge(com.yoga.modules.order.entity.OrderInfo::getPayTime, span[0])
-                .lt(com.yoga.modules.order.entity.OrderInfo::getPayTime, span[1]));
-        var refunded = orderInfoMapper.selectList(new LambdaQueryWrapper<com.yoga.modules.order.entity.OrderInfo>()
-                .eq(com.yoga.modules.order.entity.OrderInfo::getStatus, "REFUNDED")
-                .ge(com.yoga.modules.order.entity.OrderInfo::getRefundTime, span[0])
-                .lt(com.yoga.modules.order.entity.OrderInfo::getRefundTime, span[1]));
+        var paid = orderInfoMapper.selectList(new LambdaQueryWrapper<OrderInfo>()
+                .eq(OrderInfo::getStatus, "PAID")
+                .ge(OrderInfo::getPayTime, span[0])
+                .lt(OrderInfo::getPayTime, span[1]));
+        var refunded = orderInfoMapper.selectList(new LambdaQueryWrapper<OrderInfo>()
+                .eq(OrderInfo::getStatus, "REFUNDED")
+                .ge(OrderInfo::getRefundTime, span[0])
+                .lt(OrderInfo::getRefundTime, span[1]));
 
         BigDecimal total = paid.stream()
-                .map(com.yoga.modules.order.entity.OrderInfo::getAmount)
+                .map(OrderInfo::getAmount)
                 .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal refundAmount = refunded.stream()
-                .map(com.yoga.modules.order.entity.OrderInfo::getAmount)
+                .map(OrderInfo::getAmount)
                 .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Long> byType = new HashMap<>();
@@ -67,12 +80,12 @@ public class StatisticsService {
      */
     public R<List<Map<String, Object>>> course(String range) {
         LocalDateTime[] span = calcRange(range);
-        var schedules = scheduleMapper.selectList(new LambdaQueryWrapper<com.yoga.modules.course.entity.CourseSchedule>()
-                .ge(com.yoga.modules.course.entity.CourseSchedule::getStartTime, span[0])
-                .lt(com.yoga.modules.course.entity.CourseSchedule::getStartTime, span[1])
-                .ne(com.yoga.modules.course.entity.CourseSchedule::getStatus, "CANCELLED"));
+        var schedules = scheduleMapper.selectList(new LambdaQueryWrapper<CourseSchedule>()
+                .ge(CourseSchedule::getStartTime, span[0])
+                .lt(CourseSchedule::getStartTime, span[1])
+                .ne(CourseSchedule::getStatus, "CANCELLED"));
         var types = courseTypeMapper.selectList(null);
-        Map<Long, com.yoga.modules.course.entity.CourseType> typeMap = new HashMap<>();
+        Map<Long, CourseType> typeMap = new HashMap<>();
         for (var t : types) typeMap.put(t.getId(), t);
 
         Map<Long, int[]> agg = new HashMap<>(); // [count, booked, capacity]
@@ -105,14 +118,14 @@ public class StatisticsService {
     public R<Map<String, Object>> member(String range) {
         LocalDateTime[] span = calcRange(range);
         // 新增
-        Long newCount = memberMapper.selectCount(new LambdaQueryWrapper<com.yoga.modules.member.entity.Member>()
-                .ge(com.yoga.modules.member.entity.Member::getCreatedAt, span[0])
-                .lt(com.yoga.modules.member.entity.Member::getCreatedAt, span[1]));
+        Long newCount = memberMapper.selectCount(new LambdaQueryWrapper<Member>()
+                .ge(Member::getCreatedAt, span[0])
+                .lt(Member::getCreatedAt, span[1]));
         // 活跃: 区间内有 booking 的去重会员数
-        var activeList = bookingMapper.selectList(new LambdaQueryWrapper<com.yoga.modules.booking.entity.Booking>()
-                .ge(com.yoga.modules.booking.entity.Booking::getBookedAt, span[0])
-                .lt(com.yoga.modules.booking.entity.Booking::getBookedAt, span[1]));
-        long active = activeList.stream().map(com.yoga.modules.booking.entity.Booking::getMemberId)
+        var activeList = bookingMapper.selectList(new LambdaQueryWrapper<Booking>()
+                .ge(Booking::getBookedAt, span[0])
+                .lt(Booking::getBookedAt, span[1]));
+        long active = activeList.stream().map(Booking::getMemberId)
                 .filter(Objects::nonNull).distinct().count();
 
         Long total = memberMapper.selectCount(null);
@@ -129,11 +142,11 @@ public class StatisticsService {
      */
     public R<List<Map<String, Object>>> coach(String range) {
         LocalDateTime[] span = calcRange(range);
-        var schedules = scheduleMapper.selectList(new LambdaQueryWrapper<com.yoga.modules.course.entity.CourseSchedule>()
-                .ge(com.yoga.modules.course.entity.CourseSchedule::getStartTime, span[0])
-                .lt(com.yoga.modules.course.entity.CourseSchedule::getStartTime, span[1]));
-        var coaches = adminUserMapper.selectList(new LambdaQueryWrapper<com.yoga.modules.auth.entity.AdminUser>()
-                .eq(com.yoga.modules.auth.entity.AdminUser::getRole, "COACH"));
+        var schedules = scheduleMapper.selectList(new LambdaQueryWrapper<CourseSchedule>()
+                .ge(CourseSchedule::getStartTime, span[0])
+                .lt(CourseSchedule::getStartTime, span[1]));
+        var coaches = adminUserMapper.selectList(new LambdaQueryWrapper<AdminUser>()
+                .eq(AdminUser::getRole, "COACH"));
 
         Map<Long, int[]> agg = new HashMap<>();
         for (var s : schedules) {
