@@ -3,174 +3,154 @@
     <div class="page-header">
       <div>
         <h2 class="page-title">📊 数据统计</h2>
-        <div class="page-subtitle">查看营收、会员、课程的详细数据</div>
+        <div class="page-subtitle">营收、课程、教练、会员多维度数据</div>
       </div>
-      <el-radio-group v-model="range" @change="load" size="default">
-        <el-radio-button value="day">今日</el-radio-button>
-        <el-radio-button value="week">本周</el-radio-button>
-        <el-radio-button value="month">本月</el-radio-button>
-        <el-radio-button value="year">本年</el-radio-button>
+    </div>
+
+    <div class="toolbar">
+      <el-radio-group v-model="range" @change="onRangeChange">
+        <el-radio-button value="7">近 7 天</el-radio-button>
+        <el-radio-button value="30">近 30 天</el-radio-button>
+        <el-radio-button value="90">近 90 天</el-radio-button>
       </el-radio-group>
     </div>
 
-    <el-row :gutter="16">
-      <el-col :span="6">
-        <div class="stat-card primary">
-          <div class="stat-icon">💰</div>
-          <div class="stat-num">¥ {{ formatNum(data.revenue?.total) }}</div>
-          <div class="stat-label">营业额</div>
-          <div class="stat-trend">订单 {{ data.revenue?.orderCount || 0 }} 笔</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card success">
-          <div class="stat-icon">📈</div>
-          <div class="stat-num">¥ {{ formatNum(data.revenue?.refundAmount) }}</div>
-          <div class="stat-label">退款额</div>
-          <div class="stat-trend">较上期 +0%</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card warm">
-          <div class="stat-icon">👥</div>
-          <div class="stat-num">{{ data.member?.totalCount || 0 }}</div>
-          <div class="stat-label">会员总数</div>
-          <div class="stat-trend">新增 {{ data.member?.newCount || 0 }} / 活跃 {{ data.member?.activeCount || 0 }}</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card cool">
-          <div class="stat-icon">📅</div>
-          <div class="stat-num">{{ data.course?.reduce((s: number, c: any) => s + c.scheduleCount, 0) || 0 }}</div>
-          <div class="stat-label">排课总数</div>
-          <div class="stat-trend">已约 {{ data.course?.reduce((s: number, c: any) => s + c.bookedCount, 0) || 0 }} 人次</div>
-        </div>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="16" class="row-gap">
-      <el-col :span="12">
-        <div class="y-card">
-          <div class="y-card-header">
-            <span class="y-card-title">📚 课程上座率</span>
-            <span class="text-muted" style="font-size: 12px;">按课程统计</span>
-          </div>
-          <el-table :data="data.course || []" stripe>
-            <el-table-column prop="courseTypeName" label="课程" />
-            <el-table-column prop="scheduleCount" label="排课" width="80" align="center" />
-            <el-table-column prop="bookedCount" label="已约" width="80" align="center" />
-            <el-table-column label="上座率" min-width="160">
-              <template #default="{ row }">
-                <div class="capacity-cell">
-                  <div class="capacity-bar" :class="rateClass(row.rate)">
-                    <span :style="{ width: Math.min(row.rate, 100) + '%' }"></span>
-                  </div>
-                  <span class="capacity-text">{{ row.rate }}%</span>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </el-col>
-      <el-col :span="12">
-        <div class="y-card">
-          <div class="y-card-header">
-            <span class="y-card-title">🧘 教练课时榜</span>
-            <span class="text-muted" style="font-size: 12px;">按教练统计</span>
-          </div>
-          <el-table :data="data.coach || []" stripe>
-            <el-table-column label="教练" min-width="120">
-              <template #default="{ row }">
-                <div class="cell-user-sm">
-                  <div class="user-avatar-sm">{{ (row.coachName || '?').charAt(0) }}</div>
-                  <span>{{ row.coachName }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="scheduleCount" label="排课" width="80" align="center" />
-            <el-table-column prop="studentCount" label="学员" width="80" align="center" />
-            <el-table-column label="课时" width="100" align="right">
-              <template #default="{ row }">
-                <span class="text-bold" style="color: var(--y-primary);">{{ row.scheduleCount }} 节</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </el-col>
-    </el-row>
-
-    <div class="y-card row-gap">
-      <div class="y-card-header">
-        <span class="y-card-title">🥧 订单类型分布</span>
-        <span class="text-muted" style="font-size: 12px;">饼图</span>
+    <div class="stat-grid">
+      <div class="stat-card primary">
+        <div class="stat-icon"><el-icon><Money /></el-icon></div>
+        <div class="stat-num">¥ {{ stats.revenue ?? 0 }}</div>
+        <div class="stat-label">总营收</div>
+        <div class="stat-trend">较上周期 {{ stats.revenueDelta ?? 0 }}%</div>
       </div>
-      <div ref="chartRef" class="chart-area"></div>
+      <div class="stat-card warm">
+        <div class="stat-icon"><el-icon><Calendar /></el-icon></div>
+        <div class="stat-num">{{ stats.bookings ?? 0 }}</div>
+        <div class="stat-label">总预约</div>
+        <div class="stat-trend">签到率 {{ stats.checkInRate ?? 0 }}%</div>
+      </div>
+      <div class="stat-card cool">
+        <div class="stat-icon"><el-icon><User /></el-icon></div>
+        <div class="stat-num">{{ stats.newMembers ?? 0 }}</div>
+        <div class="stat-label">新增会员</div>
+        <div class="stat-trend">活跃 {{ stats.activeMembers ?? 0 }} 人</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-icon"><el-icon><DataLine /></el-icon></div>
+        <div class="stat-num">{{ stats.attendanceRate ?? 0 }}%</div>
+        <div class="stat-label">平均出勤率</div>
+        <div class="stat-trend">课程数 {{ stats.totalCourses ?? 0 }}</div>
+      </div>
+    </div>
+
+    <el-row :gutter="16" style="margin-top: 16px">
+      <el-col :xs="24" :md="14">
+        <div class="y-card">
+          <div class="y-card-header">
+            <div class="y-card-title">📈 课程上座率 Top 10</div>
+          </div>
+          <div v-for="(c, i) in topCourses" :key="i" class="rank-row">
+            <div class="rank-no" :class="rankClass(i)">{{ i + 1 }}</div>
+            <div class="rank-info">
+              <div class="rank-name">{{ c.courseTypeName }}</div>
+              <div class="capacity-bar" style="width: 100%"><span :style="{ width: c.rate + '%' }"></span></div>
+            </div>
+            <div class="rank-rate">{{ c.rate }}%</div>
+          </div>
+          <div v-if="!topCourses.length" class="empty-state"><div class="empty-icon">📊</div>暂无数据</div>
+        </div>
+      </el-col>
+      <el-col :xs="24" :md="10">
+        <div class="y-card">
+          <div class="y-card-header">
+            <div class="y-card-title">🏆 教练课时榜</div>
+          </div>
+          <div v-for="(c, i) in topCoaches" :key="i" class="rank-row">
+            <div class="rank-no" :class="rankClass(i)">{{ i + 1 }}</div>
+            <div class="rank-info">
+              <div class="coach-mini">
+                <div class="mini-avatar">{{ (c.coachName || '?').charAt(0) }}</div>
+                <span class="rank-name">{{ c.coachName }}</span>
+              </div>
+            </div>
+            <div class="rank-rate">{{ c.hours }} 课时</div>
+          </div>
+          <div v-if="!topCoaches.length" class="empty-state"><div class="empty-icon">🏆</div>暂无数据</div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <div class="y-card" style="margin-top: 16px">
+      <div class="y-card-header">
+        <div class="y-card-title">💰 订单类型分布</div>
+      </div>
+      <div ref="pieRef" style="height: 320px"></div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
+import { Money, Calendar, User, DataLine } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { statisticsApi } from '@/api'
 
-const range = ref('month')
-const data = ref<any>({})
-const chartRef = ref<HTMLDivElement>()
-let chart: echarts.ECharts | null = null
+const range = ref('7')
+const stats = reactive<any>({})
+const topCourses = ref<any[]>([])
+const topCoaches = ref<any[]>([])
+const pieRef = ref()
+let pieChart: any = null
 
-const formatNum = (n: number) => Number(n || 0).toLocaleString('zh-CN')
+const rankClass = (i: number) => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''
 
-const rateClass = (rate: number) => {
-  if (rate >= 90) return 'full'
-  if (rate >= 70) return 'warn'
-  return ''
-}
-
-const load = async () => {
-  const [rev, mem, course, coach] = await Promise.all([
-    statisticsApi.revenue(range.value),
-    statisticsApi.member(range.value),
-    statisticsApi.course(range.value),
-    statisticsApi.coach(range.value)
-  ])
-  data.value = { revenue: rev.data, member: mem.data, course: course.data, coach: coach.data }
-  await nextTick()
-  drawChart()
-}
-
-const drawChart = () => {
-  if (!chartRef.value) return
-  chart = chart || echarts.init(chartRef.value)
-  const m = data.value.revenue?.byTypeCount || {}
-  const colors = ['#667eea', '#f5576c', '#43e97b', '#fee140', '#4facfe']
-  chart.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    legend: { bottom: 0, icon: 'circle' },
-    color: colors,
+const renderPie = (data: any[]) => {
+  if (!pieRef.value) return
+  if (!pieChart) pieChart = echarts.init(pieRef.value)
+  pieChart.setOption({
+    color: ['#6366f1', '#ec4899', '#4facfe', '#43e97b', '#fee140'],
+    tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
+    legend: { bottom: 0 },
     series: [{
-      type: 'pie',
-      radius: ['45%', '70%'],
-      avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
-      label: { show: true, formatter: '{b}\n{d}%' },
-      data: Object.keys(m).map(k => ({ name: { PURCHASE_CARD: '购卡', RECHARGE: '充值', SINGLE_COURSE: '单课' }[k] || k, value: m[k] }))
+      type: 'pie', radius: ['40%', '70%'], center: ['50%', '45%'],
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { formatter: '{b}\n{d}%' },
+      data
     }]
   })
 }
+
+const load = async () => {
+  const r: any = await statisticsApi.range({ days: Number(range.value) })
+  Object.assign(stats, r.data)
+  topCourses.value = r.data.topCourses || []
+  topCoaches.value = r.data.topCoaches || []
+  await nextTick(); renderPie(r.data.orderTypeDist || [])
+}
+const onRangeChange = () => load()
 onMounted(load)
 </script>
 
 <style scoped>
-.row-gap { margin-top: 16px; }
-.chart-area { height: 340px; }
-
-.capacity-cell { display: flex; align-items: center; gap: 8px; }
-.cell-user-sm { display: flex; align-items: center; gap: 8px; }
-.user-avatar-sm {
+.stat-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--y-border); }
+.rank-row:last-child { border-bottom: none; }
+.rank-no {
   width: 28px; height: 28px; border-radius: 50%;
-  background: var(--y-gradient-cool);
-  color: #fff; display: flex; align-items: center; justify-content: center;
+  background: #e2e8f0; color: var(--y-text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; flex-shrink: 0;
+}
+.rank-no.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #fff; }
+.rank-no.silver { background: linear-gradient(135deg, #cbd5e1, #94a3b8); color: #fff; }
+.rank-no.bronze { background: linear-gradient(135deg, #fb923c, #c2410c); color: #fff; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 13px; color: var(--y-text); margin-bottom: 4px; }
+.rank-rate { font-size: 14px; font-weight: 600; color: var(--y-primary); }
+.coach-mini { display: flex; align-items: center; gap: 8px; }
+.mini-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--y-gradient-warm); color: #fff;
+  display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600;
 }
 </style>

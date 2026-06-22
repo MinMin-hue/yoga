@@ -3,100 +3,123 @@
     <div class="page-header">
       <div>
         <h2 class="page-title">⚙️ 系统设置</h2>
-        <div class="page-subtitle">配置预约规则、订单超时、通知开关等</div>
+        <div class="page-subtitle">业务规则、通知配置</div>
       </div>
-      <el-button type="primary" :icon="Check" @click="onSave">保存设置</el-button>
+      <el-button type="primary" :icon="Check" @click="onSave" :loading="saving">保存全部</el-button>
     </div>
 
     <el-row :gutter="16">
-      <el-col :span="14">
+      <el-col :xs="24" :md="12">
         <div class="y-card">
           <div class="y-card-header">
-            <span class="y-card-title">📋 预约规则</span>
-            <span class="text-muted" style="font-size: 12px;">影响会员预约行为</span>
+            <div class="y-card-title">📅 预约规则</div>
           </div>
-          <el-form :model="form" label-width="200px" style="max-width: 600px;">
-            <el-form-item label="预约停止时间(分钟)">
-              <el-input-number v-model="form['booking.stop_minutes']" :min="0" />
-              <span class="text-muted" style="margin-left: 8px;">课程开始前多少分钟停止预约</span>
+          <el-form :model="form" label-width="120px">
+            <el-form-item label="取消时限">
+              <el-input-number v-model="form.cancelHours" :min="0" :step="1" />
+              <span class="text-muted" style="margin-left: 8px;">小时 (距开始时间)</span>
             </el-form-item>
-            <el-form-item label="免费取消窗口(分钟)">
-              <el-input-number v-model="form['booking.cancel_minutes']" :min="0" />
-              <span class="text-muted" style="margin-left: 8px;">课程开始前多少分钟内取消视为违约</span>
+            <el-alert type="info" :closable="false" style="margin-bottom: 12px">
+              超过时限后, 会员不能再取消预约, 否则记为「爽约」, 系统自动扣 1 次
+            </el-alert>
+            <el-form-item label="爽约扣次">
+              <el-input-number v-model="form.noShowPenalty" :min="0" :step="1" />
+              <span class="text-muted" style="margin-left: 8px;">次</span>
             </el-form-item>
-            <el-form-item label="违约扣除次数">
-              <el-input-number v-model="form['booking.no_show_penalty']" :min="0" />
-              <span class="text-muted" style="margin-left: 8px;">爽约后扣除会员卡次数</span>
+            <el-form-item label="迟到签到">
+              <el-input-number v-model="form.lateCheckInMin" :min="0" :step="5" />
+              <span class="text-muted" style="margin-left: 8px;">分钟 (课程开始后)</span>
             </el-form-item>
-            <el-form-item label="迟到可签到(分钟)">
-              <el-input-number v-model="form['booking.late_checkin_minutes']" :min="0" />
-              <span class="text-muted" style="margin-left: 8px;">课程开始后多少分钟内可签到</span>
+            <el-form-item label="最大预约数">
+              <el-input-number v-model="form.maxAdvanceDays" :min="1" :max="30" />
+              <span class="text-muted" style="margin-left: 8px;">天后</span>
             </el-form-item>
           </el-form>
         </div>
       </el-col>
 
-      <el-col :span="10">
+      <el-col :xs="24" :md="12">
         <div class="y-card">
           <div class="y-card-header">
-            <span class="y-card-title">💳 订单 & 通知</span>
-            <span class="text-muted" style="font-size: 12px;">订单超时 & 消息推送</span>
+            <div class="y-card-title">💰 订单 & 通知</div>
           </div>
-          <el-form :model="form" label-width="200px">
-            <el-form-item label="订单支付超时(分钟)">
-              <el-input-number v-model="form['order.expire_minutes']" :min="1" />
+          <el-form :model="form" label-width="120px">
+            <el-form-item label="订单超时">
+              <el-input-number v-model="form.orderExpireMin" :min="1" :step="1" />
+              <span class="text-muted" style="margin-left: 8px;">分钟未支付自动取消</span>
+            </el-form-item>
+            <el-form-item label="退款最长时间">
+              <el-input-number v-model="form.refundMaxDays" :min="1" :step="1" />
+              <span class="text-muted" style="margin-left: 8px;">天内的订单可退款</span>
+            </el-form-item>
+            <el-form-item label="开课前提醒">
+              <el-input-number v-model="form.remindBeforeMin" :min="0" :step="5" />
+              <span class="text-muted" style="margin-left: 8px;">分钟推送提醒</span>
             </el-form-item>
             <el-form-item label="启用通知">
-              <el-switch v-model="form['notification.enabled']" active-value="true" inactive-value="false" />
-              <span class="text-muted" style="margin-left: 12px;">开启后, 系统将向会员发送短信/微信通知</span>
+              <el-switch v-model="form.notifyEnabled" active-text="开启" inactive-text="关闭" />
             </el-form-item>
+            <el-alert v-if="form.notifyEnabled" type="success" :closable="false">
+              通知已开启, 系统会在课程前 {{ form.remindBeforeMin }} 分钟推送提醒给会员
+            </el-alert>
+            <el-alert v-else type="warning" :closable="false">
+              通知已关闭, 会员将不会收到开课提醒
+            </el-alert>
           </el-form>
-        </div>
-
-        <div class="y-card" style="margin-top: 16px;">
-          <div class="y-card-header">
-            <span class="y-card-title">ℹ️ 使用提示</span>
-          </div>
-          <ul class="tip-list">
-            <li>保存后设置立即生效</li>
-            <li>如修改违约规则, 仅对新预约生效</li>
-            <li>所有变更会记录到系统日志</li>
-          </ul>
         </div>
       </el-col>
     </el-row>
+
+    <div class="y-card" style="margin-top: 16px">
+      <div class="y-card-header">
+        <div class="y-card-title">💡 使用提示</div>
+      </div>
+      <ul class="tips">
+        <li><el-icon><InfoFilled /></el-icon> 系统设置修改后立即生效, 无需重启服务</li>
+        <li><el-icon><InfoFilled /></el-icon> 爽约扣次为 0 时不扣除, 仅记录标记</li>
+        <li><el-icon><InfoFilled /></el-icon> 退款最长时间为 0 时表示不限制退款时限</li>
+        <li><el-icon><InfoFilled /></el-icon> 通知目前仅支持站内消息, 短信 / 微信通知请联系运维配置</li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { reactive, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Check } from '@element-plus/icons-vue'
+import { Check, InfoFilled } from '@element-plus/icons-vue'
 import { systemApi } from '@/api'
 
-const form = reactive<any>({})
-const onSave = async () => {
-  await systemApi.update({ ...form })
-  ElMessage.success('已保存')
-}
-onMounted(async () => {
-  const r: any = await systemApi.all()
-  Object.assign(form, r.data)
+const saving = ref(false)
+const form = reactive({
+  cancelHours: 4, noShowPenalty: 1, lateCheckInMin: 10, maxAdvanceDays: 7,
+  orderExpireMin: 30, refundMaxDays: 7, remindBeforeMin: 60, notifyEnabled: true
 })
+
+const load = async () => {
+  try {
+    const r: any = await systemApi.config()
+    if (r.data) Object.assign(form, r.data)
+  } catch {}
+}
+const onSave = async () => {
+  saving.value = true
+  try {
+    await systemApi.saveConfig(form)
+    ElMessage.success('已保存')
+  } finally { saving.value = false }
+}
+onMounted(load)
 </script>
 
 <style scoped>
-.tip-list { list-style: none; padding: 0; margin: 0; }
-.tip-list li {
+.tips { margin: 0; padding: 0 0 0 4px; list-style: none; }
+.tips li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--y-text-secondary);
   padding: 8px 0;
-  font-size: 13px;
-  color: var(--y-text-secondary);
-  display: flex; align-items: center; gap: 6px;
+  border-bottom: 1px dashed var(--y-border);
 }
-.tip-list li::before {
-  content: '·';
-  color: var(--y-primary);
-  font-size: 20px;
-  font-weight: bold;
-}
+.tips li:last-child { border-bottom: none; }
+.tips .el-icon { color: var(--y-primary); }
 </style>
