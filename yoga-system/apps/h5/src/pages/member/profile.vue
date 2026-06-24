@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import api from '@/utils/request'
-import { useUserStore, clearLogin } from '@/store/user'
+import { auth, clearAuth } from '@/store/auth'
+import { api, type UserInfo } from '@/api'
 
-const user = useUserStore()
-const profile = ref<any>({})
+const profile = ref<UserInfo | null>(null)
 
 const load = async () => {
-  if (!user.token) return
-  const r: any = await api.profile()
-  profile.value = r.data
+  if (!auth.token) return
+  try { profile.value = await api.h5.profile() } catch { /* */ }
 }
 onShow(load)
 
@@ -19,7 +17,9 @@ const logout = () => {
     title: '提示',
     content: '确认退出登录?',
     success: ({ confirm }) => {
-      if (confirm) { clearLogin(); uni.reLaunch({ url: '/pages/login/login' }) }
+      if (!confirm) return
+      clearAuth()
+      uni.reLaunch({ url: '/pages/login/login' })
     }
   })
 }
@@ -28,28 +28,24 @@ const logout = () => {
 <template>
   <view class="page">
     <view class="header">
-      <view class="avatar">{{ profile.nickname?.[0] || '🧘' }}</view>
+      <view class="avatar">{{ profile?.nickname?.[0] || '🧘' }}</view>
       <view class="info">
-        <view class="name">{{ profile.nickname || '未登录' }}</view>
-        <view class="phone">{{ profile.phone || '' }}</view>
+        <view class="name">{{ profile?.nickname || '未登录' }}</view>
+        <view class="phone">{{ profile?.phone || '' }}</view>
       </view>
     </view>
     <view class="grid">
       <view class="grid-item" @click="uni.navigateTo({ url: '/pages/member/cards' })">
-        <view class="num">💳</view>
-        <text>我的会员卡</text>
+        <view class="num">💳</view><text>我的会员卡</text>
       </view>
       <view class="grid-item" @click="uni.switchTab({ url: '/pages/booking/my' })">
-        <view class="num">📋</view>
-        <text>我的预约</text>
+        <view class="num">📋</view><text>我的预约</text>
       </view>
       <view class="grid-item">
-        <view class="num">📞</view>
-        <text>联系客服</text>
+        <view class="num">📞</view><text>联系客服</text>
       </view>
       <view class="grid-item">
-        <view class="num">ℹ️</view>
-        <text>关于我们</text>
+        <view class="num">ℹ️</view><text>关于我们</text>
       </view>
     </view>
     <view class="logout" @click="logout">退出登录</view>

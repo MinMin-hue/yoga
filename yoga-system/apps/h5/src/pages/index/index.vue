@@ -1,27 +1,38 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
-import api from '@/utils/request'
-import { useUserStore } from '@/store/user'
+import { api, type CardType, type Schedule } from '@/api'
+import { auth } from '@/store/auth'
+import { today, formatTime } from '@/utils/format'
 
-const user = useUserStore()
 const banners = [
   { id: 1, title: '专业瑜伽课程', desc: '适合初学者到进阶者', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
   { id: 2, title: '会员卡优惠', desc: '月卡 599 元起, 不限次数', color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
   { id: 3, title: '私教 1对1', desc: '专业教练个性化指导', color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }
 ]
-const cardTypes = ref<any[]>([])
-const today = new Date().toISOString().slice(0, 10)
-const schedules = ref<any[]>([])
-const courseTypes = ref<any[]>([])
+
+const cardTypes = ref<CardType[]>([])
+const schedules = ref<Schedule[]>([])
+
+const kindName = (k: CardType['cardKind']) =>
+  ({ TIME: '时间卡', TIMES: '次卡', MIXED: '混合卡' } as const)[k] || k
 
 const load = async () => {
-  const r: any = await api.cardTypeList(); cardTypes.value = r.data
-  const s: any = await api.scheduleList(today); schedules.value = (s.data || []).slice(0, 5)
-  const c: any = await api.courseTypeList(); courseTypes.value = c.data
+  try {
+    const [c, s] = await Promise.all([
+      api.h5.cardTypes(),
+      api.h5.schedules(today())
+    ])
+    cardTypes.value = c
+    schedules.value = (s || []).slice(0, 5)
+  } catch {
+    /* request 已统一提示 */
+  }
 }
 
-onShow(() => { if (!user.token) uni.reLaunch({ url: '/pages/login/login' }) })
+onShow(() => {
+  if (!auth.token) uni.reLaunch({ url: '/pages/login/login' })
+})
 onMounted(load)
 onPullDownRefresh(async () => { await load(); uni.stopPullDownRefresh() })
 
@@ -29,9 +40,6 @@ const goCard = () => uni.switchTab({ url: '/pages/card/list' })
 const goSchedule = () => uni.navigateTo({ url: '/pages/schedule/list' })
 const goBuy = (id: number) => uni.navigateTo({ url: `/pages/card/buy?id=${id}` })
 const goScheduleDetail = (id: number) => uni.navigateTo({ url: `/pages/schedule/detail?id=${id}` })
-
-const kindName = (k: string) => ({ TIME: '时间卡', TIMES: '次卡', MIXED: '混合卡' } as any)[k] || k
-const formatTime = (s: string) => s ? s.substring(11, 16) : ''
 </script>
 
 <template>

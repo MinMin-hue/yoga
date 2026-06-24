@@ -1,27 +1,32 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import api from '@/utils/request'
+import { api, type Booking, type BookingStatus } from '@/api'
 
-const list = ref<any[]>([])
-const status = ref<string>('')
+const list = ref<Booking[]>([])
+const status = ref<BookingStatus | ''>('')
+
+const statusName = (s: BookingStatus) =>
+  ({ BOOKED: '已预约', CHECKED_IN: '已签到', COMPLETED: '已完成', CANCELLED: '已取消', NO_SHOW: '爽约' } as Record<BookingStatus, string>)[s] || s
+const statusType = (s: BookingStatus) =>
+  ({ BOOKED: 'primary', CHECKED_IN: 'warning', COMPLETED: 'success', CANCELLED: 'info', NO_SHOW: 'danger' } as Record<BookingStatus, string>)[s] || ''
 
 const load = async () => {
-  const r: any = await api.myBookings(status.value || undefined)
-  list.value = r.data.list || []
+  try {
+    const r = await api.h5.bookings(status.value || undefined)
+    list.value = r.list || []
+  } catch { /* */ }
 }
 onShow(load)
 
-const statusName = (s: string) => ({ BOOKED: '已预约', CHECKED_IN: '已签到', COMPLETED: '已完成', CANCELLED: '已取消', NO_SHOW: '爽约' } as any)[s] || s
-const statusType = (s: string) => ({ BOOKED: 'primary', CHECKED_IN: 'warning', COMPLETED: 'success', CANCELLED: 'info', NO_SHOW: 'danger' } as any)[s] || ''
-
 const onCancel = async (id: number) => {
   const { confirm } = await uni.showModal({ title: '提示', content: '确认取消该预约? 临近课程取消可能扣除次数' })
-  if (confirm) {
-    await api.cancelBooking(id, '用户主动取消')
+  if (!confirm) return
+  try {
+    await api.h5.cancelBooking(id, '用户主动取消')
     uni.showToast({ title: '已取消', icon: 'success' })
     load()
-  }
+  } catch { /* */ }
 }
 </script>
 

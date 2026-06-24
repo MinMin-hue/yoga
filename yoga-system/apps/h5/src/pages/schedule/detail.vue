@@ -1,45 +1,55 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api from '@/utils/request'
-import { useUserStore } from '@/store/user'
+import { api, type Schedule, type MemberCard } from '@/api'
+import { auth } from '@/store/auth'
+import { formatTime, formatDate, today } from '@/utils/format'
 
-const user = useUserStore()
-const schedule = ref<any>({})
-const cards = ref<any[]>([])
+const schedule = ref<Schedule | null>(null)
+const cards = ref<MemberCard[]>([])
 const selCard = ref<number | null>(null)
 const showSheet = ref(false)
 const submitting = ref(false)
 
 const load = async () => {
-  const id = Number((uni.getCurrentPages().pop() as any).options.id)
-  const r: any = await api.scheduleList(new Date().toISOString().slice(0, 10))
-  schedule.value = (r.data as any[]).find((x: any) => x.id === id) || {}
-  const c: any = await api.myCards()
-  cards.value = (c.data.cards || []).filter((x: any) => x.status === 'ACTIVE')
+  const pages = uni.getCurrentPages() as any[]
+  const id = Number(pages[pages.length - 1]?.options?.id)
+  if (!id) return
+  try {
+    const [all, c] = await Promise.all([
+      api.h5.schedules(today()),
+      api.h5.cards()
+    ])
+    schedule.value = (all || []).find((x) => x.id === id) ?? null
+    cards.value = (c.cards || []).filter((x) => x.status === 'ACTIVE')
+  } catch { /* */ }
 }
 onMounted(load)
 
-const formatTime = (s: string) => s ? s.substring(11, 16) : ''
-const formatDate = (s: string) => s ? s.replace('T', ' ').substring(0, 16) : ''
-
-const onBook = async () => {
-  if (!user.token) return uni.navigateTo({ url: '/pages/login/login' })
-  if (cards.value.length === 0) return uni.showToast({ title: '您还没有可用的会员卡', icon: 'none' })
+const onBook = () => {
+  if (!auth.token) return uni.navigateTo({ url: '/pages/login/login' })
+  if (cards.value.length === 0) {
+    return uni.showToast({ title: '您还没有可用的会员卡', icon: 'none' })
+  }
   showSheet.value = true
 }
 const doBook = async () => {
-  if (!selCard.value) return uni.showToast({ title: '请选择会员卡', icon: 'none' })
+  if (!schedule.value || !selCard.value) {
+    return uni.showToast({ title: '请选择会员卡', icon: 'none' })
+  }
   submitting.value = true
   try {
-    await api.createBooking({ scheduleId: schedule.value.id, cardId: selCard.value })
+    await api.h5.createBooking(schedule.value.id, selCard.value)
     uni.showToast({ title: '预约成功', icon: 'success' })
     setTimeout(() => uni.navigateBack(), 600)
-  } finally { submitting.value = false; showSheet.value = false }
+  } catch { /* */ } finally {
+    submitting.value = false
+    showSheet.value = false
+  }
 }
 </script>
 
 <template>
-  <view class="page" v-if="schedule.id">
+  <view v-if="schedule" class="page">
     <view class="hero">
       <view class="name">{{ schedule.courseTypeName }}</view>
       <view class="time">📅 {{ formatDate(schedule.startTime) }} - {{ formatTime(schedule.endTime) }}</view>
@@ -61,9 +71,9 @@ const doBook = async () => {
         <view class="sheet-title">选择会员卡</view>
         <view v-for="c in cards" :key="c.id" :class="['card-opt', selCard === c.id && 'active']" @click="selCard = c.id">
           <view>{{ c.cardTypeName }} ({{ c.cardNo }})</view>
-          <view class="muted">剩余 {{ c.remainTimes || '不限' }} 次 · 到期 {{ c.validTo?.substring(0, 10) || '永久' }}</view>
+          <view class="muted">剩余 {{ c.remainTimes ?? '不限' }} 次 · 到期 {{ c.validTo?.substring(0, 10) || '永久' }}</view>
         </view>
-        <button class="btn-primary" :loading="submitting" @click="doBook">确认预约</button>
+        <button class="btn-primary" :loading="submitting" :disabled="submitting" @click="doBook">确认预约</button>
       </view>
     </view>
   </view>
@@ -78,7 +88,7 @@ const doBook = async () => {
 .row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
 .row:last-child { border-bottom: none; }
 .footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px; background: #fff; }
-button { height: 48px; line-height: 48px; border-radius: 24px; }
+button { height: 48px; line-height: 48px; border-radius: 24px; border: none; }
 .mask { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; display: flex; align-items: flex-end; }
 .sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 16px; max-height: 70vh; overflow-y: auto; }
 .sheet-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
