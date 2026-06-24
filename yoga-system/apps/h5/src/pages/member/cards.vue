@@ -1,22 +1,26 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import api from '@/utils/request'
+import { api, type MemberCard, type ConsumeRecord, type CardStatus, type RecordType } from '@/api'
+import { formatDateShort } from '@/utils/format'
 
-const cards = ref<any[]>([])
-const records = ref<any[]>([])
+const cards = ref<MemberCard[]>([])
+const records = ref<ConsumeRecord[]>([])
 const tab = ref<'cards' | 'records'>('cards')
 
+const statusName = (s: CardStatus) =>
+  ({ PENDING: '待激活', ACTIVE: '正常', EXPIRED: '已过期', NO_REMAIN: '次数用尽', REFUNDED: '已退款' } as Record<CardStatus, string>)[s] || s
+const typeName = (t: RecordType) =>
+  ({ PURCHASE: '购卡', RECHARGE: '充值', CHECKIN: '扣次', REFUND: '退款', PENALTY: '违约扣次' } as Record<RecordType, string>)[t] || t
+
 const load = async () => {
-  const c: any = await api.myCards()
-  cards.value = c.data.cards || []
-  const r: any = await api.myRecords()
-  records.value = r.data.records || []
+  try {
+    const [c, r] = await Promise.all([api.h5.cards(), api.h5.records()])
+    cards.value = c.cards || []
+    records.value = r.records || []
+  } catch { /* */ }
 }
 onShow(load)
-
-const statusName = (s: string) => ({ PENDING: '待激活', ACTIVE: '正常', EXPIRED: '已过期', NO_REMAIN: '次数用尽', REFUNDED: '已退款' } as any)[s] || s
-const typeName = (t: string) => ({ PURCHASE: '购卡', RECHARGE: '充值', CHECKIN: '扣次', REFUND: '退款', PENALTY: '违约扣次' } as any)[t] || t
 </script>
 
 <template>
@@ -36,7 +40,7 @@ const typeName = (t: string) => ({ PURCHASE: '购卡', RECHARGE: '充值', CHECK
         <view class="mc-no">卡号: {{ c.cardNo }}</view>
         <view class="mc-bottom">
           <view><text class="lbl">剩余次数</text><text class="val">{{ c.remainTimes ?? '不限' }}</text></view>
-          <view><text class="lbl">到期时间</text><text class="val">{{ c.validTo?.substring(0, 10) || '永久' }}</text></view>
+          <view><text class="lbl">到期时间</text><text class="val">{{ formatDateShort(c.validTo) || '永久' }}</text></view>
         </view>
       </view>
     </view>

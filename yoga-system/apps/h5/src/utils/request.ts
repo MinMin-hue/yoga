@@ -1,27 +1,41 @@
-import { useUserStore, clearLogin } from '@/store/user'
+import { auth, clearAuth } from '@/store/auth'
 
 const BASE_URL = '/api'
+const LOGIN_URL = '/pages/login/login'
 
-export const request = (options: UniApp.RequestOptions) => {
-  const user = useUserStore()
-  return new Promise<any>((resolve, reject) => {
+export interface ApiEnvelope<T> {
+  code: number
+  message?: string
+  data: T
+}
+
+/**
+ * 统一请求封装：自动带上 Token、统一处理 401、统一错误提示。
+ */
+export function request<T = unknown>(options: UniApp.RequestOptions): Promise<T> {
+  const { url, header, ...rest } = options
+  return new Promise<T>((resolve, reject) => {
     uni.request({
-      ...options,
-      url: BASE_URL + options.url,
+      ...rest,
+      url: BASE_URL + url,
       header: {
         'Content-Type': 'application/json',
-        Authorization: user.token ? `Bearer ${user.token}` : '',
-        ...(options.header || {})
+        ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}),
+        ...(header || {})
       },
       success: (res) => {
-        const data: any = res.data
-        if (data.code === 0) return resolve(data)
-        uni.showToast({ title: data.message || '请求失败', icon: 'none' })
-        if (data.code === 401) {
-          clearLogin()
-          uni.reLaunch({ url: '/pages/login/login' })
+        const body = res.data as ApiEnvelope<T> | undefined
+        if (body && body.code === 0) {
+          resolve(body.data)
+          return
         }
-        reject(data)
+        if (body?.code === 401) {
+          clearAuth()
+          uni.reLaunch({ url: LOGIN_URL })
+        }
+        const msg = body?.message || '请求失败'
+        uni.showToast({ title: msg, icon: 'none' })
+        reject(body || new Error(msg))
       },
       fail: (err) => {
         uni.showToast({ title: '网络异常', icon: 'none' })
@@ -29,22 +43,4 @@ export const request = (options: UniApp.RequestOptions) => {
       }
     })
   })
-}
-
-export default {
-  // auth
-  memberLogin: (data: { phone: string; code?: string }) =>
-    request({ url: '/auth/member/login', method: 'POST', data }),
-  // h5
-  profile: () => request({ url: '/h5/member/profile' }),
-  myCards: () => request({ url: '/h5/member/cards' }),
-  myRecords: () => request({ url: '/h5/member/records' }),
-  myBookings: (status?: string) => request({ url: '/h5/booking/my', method: 'GET', data: status ? { status } : {} }),
-  cardTypeList: () => request({ url: '/h5/card-type/list' }),
-  courseTypeList: () => request({ url: '/h5/course-type/list' }),
-  scheduleList: (date: string, courseTypeId?: number) => request({ url: '/h5/schedule/list', data: { date, courseTypeId } }),
-  createBooking: (data: { scheduleId: number; cardId: number }) => request({ url: '/h5/booking/create', method: 'POST', data }),
-  cancelBooking: (id: number, reason?: string) => request({ url: `/h5/booking/cancel/${id}`, method: 'POST', data: reason ? { reason } : {} }),
-  createOrder: (data: any) => request({ url: '/h5/order/create', method: 'POST', data }),
-  cancelOrder: (id: number) => request({ url: `/h5/order/cancel/${id}`, method: 'POST' })
 }

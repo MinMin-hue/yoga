@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api from '@/utils/request'
+import { api, type CardType, type CardKind } from '@/api'
 
-const list = ref<any[]>([])
-const kindName = (k: string) => ({ TIME: '时间卡', TIMES: '次卡', MIXED: '混合卡' } as any)[k] || k
+const list = ref<CardType[]>([])
+
+const kindName = (k: CardKind) =>
+  ({ TIME: '时间卡', TIMES: '次卡', MIXED: '混合卡' } as const)[k] || k
 
 const load = async () => {
-  const r: any = await api.cardTypeList()
-  list.value = r.data
+  try { list.value = await api.h5.cardTypes() } catch { /* */ }
 }
 onMounted(load)
+
 const goBuy = (id: number) => uni.navigateTo({ url: `/pages/card/buy?id=${id}` })
 </script>
 

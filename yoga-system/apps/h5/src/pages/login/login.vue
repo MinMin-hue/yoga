@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import api from '@/utils/request'
-import { useUserStore, setLogin } from '@/store/user'
+import { auth, setAuth } from '@/store/auth'
+import { api } from '@/api'
 
 const phone = ref('')
 const loading = ref(false)
-const user = useUserStore()
 
 const onLogin = async () => {
   if (!/^1[3-9]\d{9}$/.test(phone.value)) {
@@ -13,11 +12,15 @@ const onLogin = async () => {
   }
   loading.value = true
   try {
-    const r: any = await api.memberLogin({ phone: phone.value })
-    setLogin(r.data.token, r.data.profile)
+    const { token, profile } = await api.auth.login(phone.value)
+    setAuth(token, profile)
     uni.showToast({ title: '登录成功', icon: 'success' })
     setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 600)
-  } finally { loading.value = false }
+  } catch {
+    /* request 内部已 toast */
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -31,7 +34,7 @@ const onLogin = async () => {
         <text class="label">手机号</text>
         <input v-model="phone" type="number" maxlength="11" placeholder="请输入手机号登录" />
       </view>
-      <button class="btn-primary" :loading="loading" @click="onLogin">登 录</button>
+      <button class="btn-primary" :loading="loading" :disabled="loading" @click="onLogin">登 录</button>
       <view class="tip">首次登录将自动注册</view>
     </view>
   </view>
@@ -45,6 +48,6 @@ const onLogin = async () => {
 .form-item { background: #fff; border-radius: 8px; padding: 14px; margin-bottom: 16px; display: flex; align-items: center; }
 .label { width: 70px; color: #606266; }
 input { flex: 1; font-size: 16px; }
-button { width: 100%; height: 48px; line-height: 48px; border-radius: 24px; }
+button { width: 100%; height: 48px; line-height: 48px; border-radius: 24px; border: none; }
 .tip { text-align: center; color: #909399; font-size: 12px; margin-top: 16px; }
 </style>
