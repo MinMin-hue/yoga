@@ -1,4 +1,4 @@
-import { useUserStore } from '@/store/user'
+import { useUserStore, clearLogin } from '@/store/user'
 
 const BASE_URL = '/api'
 
@@ -18,7 +18,7 @@ export const request = (options: UniApp.RequestOptions) => {
         if (data.code === 0) return resolve(data)
         uni.showToast({ title: data.message || '请求失败', icon: 'none' })
         if (data.code === 401) {
-          user.clear()
+          clearLogin()
           uni.reLaunch({ url: '/pages/login/login' })
         }
         reject(data)

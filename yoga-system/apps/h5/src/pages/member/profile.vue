@@ -19,7 +19,7 @@ const logout = () => {
     title: '提示',
     content: '确认退出登录?',
     success: ({ confirm }) => {
-      if (confirm) { user.clear(); uni.reLaunch({ url: '/pages/login/login' }) }
+      if (confirm) { clearLogin(); uni.reLaunch({ url: '/pages/login/login' }) }
     }
   })
 }
