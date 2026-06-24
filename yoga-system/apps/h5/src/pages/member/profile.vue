@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import api from '@/utils/request'
-import { useUserStore } from '@/store/user'
+import { useUserStore, clearLogin } from '@/store/user'
 
 const user = useUserStore()
 const profile = ref<any>({})
