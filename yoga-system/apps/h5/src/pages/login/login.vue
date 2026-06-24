@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import api from '@/utils/request'
-import { useUserStore } from '@/store/user'
+import { useUserStore, setLogin } from '@/store/user'
 
 const phone = ref('')
 const loading = ref(false)
@@ -14,7 +14,7 @@ const onLogin = async () => {
   loading.value = true
   try {
     const r: any = await api.memberLogin({ phone: phone.value })
-    user.setLogin(r.data.token, r.data.profile)
+    setLogin(r.data.token, r.data.profile)
     uni.showToast({ title: '登录成功', icon: 'success' })
     setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 600)
   } finally { loading.value = false }
