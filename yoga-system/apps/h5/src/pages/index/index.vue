@@ -36,12 +36,12 @@ interface Feature {
 const features: Feature[] = [
   { id: 'hot',     label: '热门课程', color: '#FF6B4A', bg: '#FFEAE3', path: '/pages/schedule/list' },
   { id: 'class',   label: '班课',     color: '#FF8A3D', bg: '#FFEEDD', path: '/pages/schedule/list' },
-  { id: 'preview', label: '场馆预览', color: '#4A8DFF', bg: '#E6F0FF' },
-  { id: 'notice',  label: '场馆公告', color: '#23B573', bg: '#E5F6EE' },
+  { id: 'preview', label: '场馆预览', color: '#4A8DFF', bg: '#E6F0FF', path: '/pages/venue/preview' },
+  { id: 'notice',  label: '场馆公告', color: '#23B573', bg: '#E5F6EE', path: '/pages/venue/notice' },
   { id: 'trial',   label: '体验课',   color: '#A06BFF', bg: '#F0E8FF', path: '/pages/schedule/list' },
-  { id: 'photo',   label: '照片墙',   color: '#FF7AAE', bg: '#FFE9F1' },
-  { id: 'test',    label: '我的体测', color: '#00B8C4', bg: '#DDF5F7', path: '/pages/member/profile' },
-  { id: 'checkin', label: '打卡',     color: '#F5A623', bg: '#FFF1DA' }
+  { id: 'photo',   label: '照片墙',   color: '#FF7AAE', bg: '#FFE9F1', path: '/pages/venue/photos' },
+  { id: 'test',    label: '我的体测', color: '#00B8C4', bg: '#DDF5F7', path: '/pages/member/test' },
+  { id: 'checkin', label: '打卡',     color: '#F5A623', bg: '#FFF1DA', path: '/pages/checkin/index' }
 ]
 
 const onFeature = (f: Feature) => {
@@ -51,7 +51,7 @@ const onFeature = (f: Feature) => {
 
 // =================== 主操作卡 ===================
 const goBook = () => uni.navigateTo({ url: '/pages/schedule/list' })
-const goCheckin = () => uni.showToast({ title: '签到成功', icon: 'success' })
+const goCheckin = () => uni.navigateTo({ url: '/pages/checkin/index' })
 const goCall = () => uni.makePhoneCall({ phoneNumber: brand.phone })
 
 // =================== 金牌教练 ===================
@@ -239,6 +239,10 @@ onPullDownRefresh(async () => { await load(); uni.stopPullDownRefresh() })
     </view>
   </view>
 </template>
+
+<style>
+@import '@/styles/common.css';
+</style>
 
 <style scoped>
 .page { padding-bottom: 24px; }

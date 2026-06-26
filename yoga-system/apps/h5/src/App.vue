@@ -7,6 +7,6 @@ onLaunch(() => {
 </script>
 
 <style>
-page { background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
-.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border-radius: 24px; }
+/* uni-app / vue 内置样式会自动注入 */
+/* 全局公共样式由每个页面 import '@/styles/common.css' 加载 */
 </style>

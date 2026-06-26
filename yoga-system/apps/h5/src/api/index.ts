@@ -13,6 +13,7 @@ export type CardKind = 'TIME' | 'TIMES' | 'MIXED'
 export type CardStatus = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'NO_REMAIN' | 'REFUNDED'
 export type BookingStatus = 'BOOKED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 export type RecordType = 'PURCHASE' | 'RECHARGE' | 'CHECKIN' | 'REFUND' | 'PENALTY'
+export type ScheduleStatus = 'SCHEDULED' | 'FULL' | 'FINISHED' | 'CANCELLED'
 
 export interface CardType {
   id: number
@@ -39,6 +40,7 @@ export interface Schedule {
   courseTypeName: string
   coachName: string
   roomName?: string
+  status?: ScheduleStatus
 }
 
 export interface MemberCard {
