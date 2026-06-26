@@ -8,7 +8,12 @@
     { "path": "pages/schedule/detail", "style": { "navigationBarTitleText": "课程详情" } },
     { "path": "pages/booking/my", "style": { "navigationBarTitleText": "我的预约" } },
     { "path": "pages/member/profile", "style": { "navigationBarTitleText": "我的" } },
-    { "path": "pages/member/cards", "style": { "navigationBarTitleText": "我的会员卡" } }
+    { "path": "pages/member/cards", "style": { "navigationBarTitleText": "我的会员卡" } },
+    { "path": "pages/member/test", "style": { "navigationBarTitleText": "我的体测" } },
+    { "path": "pages/venue/preview", "style": { "navigationBarTitleText": "场馆预览" } },
+    { "path": "pages/venue/notice", "style": { "navigationBarTitleText": "场馆公告" } },
+    { "path": "pages/venue/photos", "style": { "navigationBarTitleText": "照片墙" } },
+    { "path": "pages/checkin/index", "style": { "navigationBarTitleText": "每日打卡" } }
   ],
   "tabBar": {
     "color": "#7A7E83",
@@ -25,7 +30,7 @@
   "globalStyle": {
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "瑜伽馆",
-    "navigationBarBackgroundColor": "#667eea",
-    "backgroundColor": "#F8F8F8"
+    "navigationBarBackgroundColor": "#FF6B3D",
+    "backgroundColor": "#F5F5F7"
   }
 }
