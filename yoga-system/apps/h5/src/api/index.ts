@@ -72,6 +72,13 @@ export interface ConsumeRecord {
 export interface Order {
   id: number
   orderNo: string
+  orderType?: 'PURCHASE_CARD' | 'SINGLE_COURSE' | 'RECHARGE'
+  status?: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED'
+  amount?: number
+  cardTypeName?: string
+  courseTypeName?: string
+  expireAt?: string
+  createdAt?: string
 }
 
 // =================== 接口 ===================
@@ -111,6 +118,11 @@ export const api = {
         url: '/h5/order/create',
         method: 'POST',
         data: { orderType: 'PURCHASE_CARD', cardTypeId, amount }
+      }),
+    cancelOrder: (id: number) =>
+      request<Order>({
+        url: `/h5/order/cancel/${id}`,
+        method: 'POST'
       })
   }
 }
